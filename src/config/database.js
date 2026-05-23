@@ -43,13 +43,18 @@ module.exports = {
     timezone: '-03:00',
   },
 
-  dialectOptions: useSSL
-    ? {
-        ssl: {
-          ca: process.env.DB_SSL_CA.replace(/\\n/g, '\n'),
-          rejectUnauthorized: true, // mantém validação do CA
-          checkServerIdentity: () => undefined, // ignora mismatch de hostname/SAN
-        },
-      }
-    : {},
+  // dialectOptions: useSSL
+  //   ? {
+  //       ssl: {
+  //         ca: process.env.DB_SSL_CA.replace(/\\n/g, '\n'),
+  //         rejectUnauthorized: true, // mantém validação do CA
+  //         checkServerIdentity: () => undefined, // ignora mismatch de hostname/SAN
+  //       },
+  //     }
+  //   : {},
+
+  dialectOptions: {
+  allowPublicKeyRetrieval: true,
+  ssl: false,
+  }
 };

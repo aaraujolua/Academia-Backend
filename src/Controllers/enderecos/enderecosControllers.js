@@ -2,63 +2,166 @@ import Enderecos from '../../Models/Enderecos';
 import Alunos from '../../Models/Alunos';
 import Personal from '../../Models/Personal';
 
+const ENDERECO_ATTRIBUTES = [
+  'id',
+  'aluno_id',
+  'personal_id',
+  'rua',
+  'numero',
+  'complemento',
+  'bairro',
+  'cidade',
+  'estado',
+  'cep',
+];
+
+const PERFIS = {
+  aluno: {
+    campo: 'aluno_id',
+    model: Alunos,
+    nome: 'aluno',
+  },
+  personal: {
+    campo: 'personal_id',
+    model: Personal,
+    nome: 'personal',
+  },
+};
+
+const perfilInformado = (id) => id !== undefined && id !== null && id !== '';
+
 class EnderecosControllers {
-  async store(req, res) {
+  async storeByPerfil(req, res, tipoPerfil) {
     try {
-      const { aluno_id, personal_id } = req.body;
-      let endereco = '';
+      const perfil = PERFIS[tipoPerfil];
+      const perfilId = req.userID;
 
-      if (aluno_id) {
-        const id = aluno_id;
-        const aluno = await Alunos.findByPk(id, {
-          include: {
-            model: Enderecos,
-            attributes: ['id', 'aluno_id'],
-            order: [['id', 'DESC']],
-          },
+      if (!perfilInformado(perfilId)) {
+        return res.status(401).json({
+          errors: ['Login obrigatório para cadastrar endereço.'],
         });
-
-        if (!aluno) {
-          return res.status(404).json({
-            errors: ['Nenhum aluno foi encontrado'],
-          });
-        }
-
-        if (aluno.dataValues.Endereco) {
-          return res.status(401).json({
-            errors: ['Já há um endereço vinculado a este perfil'],
-          });
-        }
-
-        endereco = await Enderecos.create(req.body);
       }
 
-      if (personal_id) {
-        const id = personal_id;
-        const personal = await Personal.findByPk(id, {
-          include: {
-            model: Enderecos,
-            attributes: ['id', 'personal_id'],
-            order: [['id', 'DESC']],
-          },
+      const usuario = await perfil.model.findByPk(perfilId);
+
+      if (!usuario) {
+        return res.status(404).json({
+          errors: [`Nenhum ${perfil.nome} foi encontrado com o id ${perfilId}.`],
         });
-
-        if (!personal) {
-          return res.status(404).json({
-            errors: ['Nenhum personal foi encontrado'],
-          });
-        }
-
-        if (personal.dataValues.Endereco) {
-          return res.status(401).json({
-            errors: ['Já há um endereço vinculado a este perfil'],
-          });
-        }
-
-        endereco = await Enderecos.create(req.body);
       }
 
-      return res.status(200).json(endereco);
+      const enderecoExistente = await Enderecos.findOne({
+        where: { [perfil.campo]: perfilId },
+        attributes: ['id', perfil.campo],
+      });
+
+      if (enderecoExistente) {
+        return res.status(409).json({
+          errors: [`Já existe um endereço vinculado a este ${perfil.nome}.`],
+          data: {
+            endereco_id: enderecoExistente.id,
+            tipo_perfil: tipoPerfil,
+            perfil_id: perfilId,
+          },
+        });
+      }
+
+      const dadosEndereco = {
+        ...req.body,
+        aluno_id: null,
+        personal_id: null,
+        [perfil.campo]: perfilId,
+      };
+
+      const endereco = await Enderecos.create(dadosEndereco);
+
+      return res.status(201).json({
+        message: `Endereço cadastrado com sucesso para o ${perfil.nome}.`,
+        data: endereco,
+      });
+    } catch (e) {
+      return res.status(400).json({
+        errors: e.errors?.map((err) => err.message) || [e.message],
+      });
+    }
+  }
+
+  async storeAluno(req, res) {
+    return this.storeByPerfil(req, res, 'aluno');
+  }
+
+  async storePersonal(req, res) {
+    return this.storeByPerfil(req, res, 'personal');
+  }
+
+  async store(req, res) {
+    return res.status(400).json({
+      errors: [
+        'Cadastro de endereço deve usar o usuário logado. Use POST /enderecos/aluno ou POST /enderecos/personal.',
+      ],
+    });
+  }
+
+  async show(req, res) {
+    try {
+      const endereco = await Enderecos.findByPk(req.params.id, {
+        attributes: ENDERECO_ATTRIBUTES,
+      });
+
+      if (!endereco) {
+        return res.status(404).json({
+          errors: [`Nenhum endereço foi encontrado com o id ${req.params.id}.`],
+        });
+      }
+
+      return res.status(200).json({
+        message: 'Endereço encontrado com sucesso.',
+        data: endereco,
+      });
+    } catch (e) {
+      return res.status(400).json({
+        errors: e.errors?.map((err) => err.message) || [e.message],
+      });
+    }
+  }
+
+  async showByPerfil(req, res) {
+    try {
+      const { tipo, id } = req.params;
+      const tipoPerfil = String(tipo).toLowerCase();
+      const perfil = PERFIS[tipoPerfil];
+
+      if (!perfil) {
+        return res.status(400).json({
+          errors: ['Tipo de perfil inválido. Use "aluno" ou "personal".'],
+        });
+      }
+
+      const usuario = await perfil.model.findByPk(id, {
+        attributes: ['id'],
+      });
+
+      if (!usuario) {
+        return res.status(404).json({
+          errors: [`Nenhum ${perfil.nome} foi encontrado com o id ${id}.`],
+        });
+      }
+
+      const endereco = await Enderecos.findOne({
+        where: { [perfil.campo]: id },
+        attributes: ENDERECO_ATTRIBUTES,
+      });
+
+      if (!endereco) {
+        return res.status(404).json({
+          errors: [`Nenhum endereço foi encontrado para este ${perfil.nome}.`],
+        });
+      }
+
+      return res.status(200).json({
+        message: 'Endereço encontrado com sucesso.',
+        data: endereco,
+      });
     } catch (e) {
       return res.status(400).json({
         errors: e.errors?.map((err) => err.message) || [e.message],
@@ -84,7 +187,10 @@ class EnderecosControllers {
 
       const novosDados = await endereco.update(req.body);
 
-      return res.status(200).json(novosDados);
+      return res.status(200).json({
+        message: 'Endereço atualizado com sucesso.',
+        data: novosDados,
+      });
     } catch (e) {
       return res.status(400).json({
         errors: e.errors?.map((err) => err.message) || [e.message],
@@ -111,7 +217,7 @@ class EnderecosControllers {
       await endereco.destroy();
 
       return res.status(200).json({
-        success: ['Excluido com sucesso'],
+        message: 'Endereço excluído com sucesso.',
       });
     } catch (e) {
       return res.status(400).json({

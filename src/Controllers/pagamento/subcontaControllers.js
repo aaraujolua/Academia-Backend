@@ -31,12 +31,13 @@ class SubcontaControllers {
         message: 'Subconta criada com sucesso.',  
         data: novaSubconta,
       }); 
-    } catch (error) {  
+    } catch (error) {
       console.error('Erro ao criar subconta:', error.message);  
   
-      return res.status(400).json({  
-        errors: [error.message],  
-      });  
+      return res.status(error.status || 400).json({
+        errors: [error.message],
+        details: error.details || undefined,
+      });
     }  
   }  
   
@@ -50,12 +51,13 @@ class SubcontaControllers {
         message: 'Subconta atualizada com sucesso.',  
         data: subcontaAtualizada,  
       });  
-    } catch (error) {  
+    } catch (error) {
       console.error('Erro ao atualizar subconta:', error.message);  
   
-      return res.status(400).json({  
-        errors: [error.message],  
-      });  
+      return res.status(error.status || 400).json({
+        errors: [error.message],
+        details: error.details || undefined,
+      });
     }  
   }  
 }  

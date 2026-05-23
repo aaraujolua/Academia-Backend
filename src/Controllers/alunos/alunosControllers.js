@@ -66,7 +66,7 @@ class AlunoControllers {
       if (expand && expand.includes('endereco')) {
         options.include.push({
           model: Enderecos,
-          attributes: ['id', 'personal_id', 'rua', 'cidade'],
+          attributes: ['id', 'aluno_id', 'personal_id', 'rua', 'numero', 'complemento', 'bairro', 'cidade', 'estado', 'cep'],
           order: [['id', 'DESC']],
         });
       }
@@ -135,7 +135,7 @@ class AlunoControllers {
       if (expand && expand.includes('endereco')) {
         options.include.push({
           model: Enderecos,
-          attributes: ['id', 'personal_id', 'rua', 'cidade'],
+          attributes: ['id', 'aluno_id', 'personal_id', 'rua', 'numero', 'complemento', 'bairro', 'cidade', 'estado', 'cep'],
           order: [['id', 'DESC']],
         });
       }
